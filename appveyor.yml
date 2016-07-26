@@ -18,5 +18,5 @@ test_script:
   - cd ..
 
 artifacts:
-  - path: cmdstan-2.10.0
+  - path: cmdstan
     name: Compiled cmdstan
