@@ -29,6 +29,8 @@ ifeq (g++,$(CC_TYPE))
   CFLAGS += -Wno-unused-function
   CFLAGS += -Wno-uninitialized
   CFLAGS += -Wno-unused-but-set-variable
+# See http://wiki.codeblocks.org/index.php/FAQ-Compiling_(errors)#Q:_My_build_fails_to_link_due_to_multiple_definition_of_xyz_errors.3F
+  CFLAGS += -Wl,--allow-multiple-definition
   LDLIBS += -static-libgcc
   LDLIBS += -static-libstdc++
 endif
