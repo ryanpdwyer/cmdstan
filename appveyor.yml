@@ -4,14 +4,12 @@ clone_depth: 1
 
 os: Visual Studio 2015
 
-before_install:
-  - git submodule update --init --recursive
-
 build_script:
 # If there's a newer build queued for the same PR, cancel this one
+  - git submodule update --init --recursive
   - SET PATH=C:\msys64\usr\bin;%PATH%
   - g++ --version
-  - cd cmdstan
+  - cd C:\projects\cmdstan
   - dir
   - make build
 
