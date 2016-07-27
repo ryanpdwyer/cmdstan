@@ -13,10 +13,12 @@ build_script:
   - dir
   - make build
 
+after_build:
+  7z a cmdstan.zip %APPVEYOR_BUILD_FOLDER%\*
+
 test_script:
   - python runCmdStanTests.py src/test/interface
-  - cd ..
 
 artifacts:
-  - path: cmdstan
+  - path: cmdstan.zip
     name: Compiled cmdstan
