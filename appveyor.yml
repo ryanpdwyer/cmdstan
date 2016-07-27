@@ -14,7 +14,8 @@ build_script:
   - make build
 
 after_build:
-  7z a cmdstan.zip %APPVEYOR_BUILD_FOLDER%\*
+  # Archive everything but the .git directory
+  7z a cmdstan.zip %APPVEYOR_BUILD_FOLDER%\ -xr!.git
 
 test_script:
   - python runCmdStanTests.py src/test/interface
