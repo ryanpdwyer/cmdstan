@@ -1,13 +1,13 @@
 #include <gtest/gtest.h>
 #include <stan/services/error_codes.hpp>
-#include <stan/services/arguments/argument_probe.hpp>
-#include <stan/services/arguments/arg_method.hpp>
-#include <stan/services/arguments/arg_id.hpp>
-#include <stan/services/arguments/arg_data.hpp>
-#include <stan/services/arguments/arg_init.hpp>
-#include <stan/services/arguments/arg_random.hpp>
-#include <stan/services/arguments/arg_output.hpp>
-#include <stan/interface_callbacks/writer/stream_writer.hpp>
+#include <cmdstan/arguments/argument_probe.hpp>
+#include <cmdstan/arguments/arg_method.hpp>
+#include <cmdstan/arguments/arg_id.hpp>
+#include <cmdstan/arguments/arg_data.hpp>
+#include <cmdstan/arguments/arg_init.hpp>
+#include <cmdstan/arguments/arg_random.hpp>
+#include <cmdstan/arguments/arg_output.hpp>
+#include <stan/callbacks/stream_writer.hpp>
 #include <test/utility.hpp>
 
 #include <vector>
@@ -63,12 +63,12 @@ std::string StanGmArgumentsConfiguration::command = "";
 TEST_F(StanGmArgumentsConfiguration, TestMethod) {
   // Prepare arguments
   std::stringstream s;
-  stan::interface_callbacks::writer::stream_writer w(s);
+  stan::callbacks::stream_writer w(s);
 
-  std::vector<stan::services::argument*> valid_arguments;
-  valid_arguments.push_back(new stan::services::arg_method());
+  std::vector<cmdstan::argument*> valid_arguments;
+  valid_arguments.push_back(new cmdstan::arg_method());
   
-  stan::services::argument_probe probe(valid_arguments);
+  cmdstan::argument_probe probe(valid_arguments);
   probe.probe_args(w);
 
   // Check argument consistency
@@ -167,8 +167,8 @@ TEST_F(StanGmArgumentsConfiguration, TestIdWithMethod) {
   
   // Prepare arguments
   std::stringstream method_output;
-  stan::interface_callbacks::writer::stream_writer method_writer(method_output);
-  stan::services::arg_method method;
+  stan::callbacks::stream_writer method_writer(method_output);
+  cmdstan::arg_method method;
   method.print(method_writer, 0, "");
   
   std::string l0;
@@ -189,11 +189,11 @@ TEST_F(StanGmArgumentsConfiguration, TestIdWithMethod) {
   method_output.seekg(std::ios_base::beg);
 
   std::stringstream s;
-  stan::interface_callbacks::writer::stream_writer w(s);
-  std::vector<stan::services::argument*> valid_arguments;
-  valid_arguments.push_back(new stan::services::arg_id());
+  stan::callbacks::stream_writer w(s);
+  std::vector<cmdstan::argument*> valid_arguments;
+  valid_arguments.push_back(new cmdstan::arg_id());
   
-  stan::services::argument_probe probe(valid_arguments);
+  cmdstan::argument_probe probe(valid_arguments);
   probe.probe_args(w);
   
   // Check argument consistency
@@ -284,12 +284,12 @@ TEST_F(StanGmArgumentsConfiguration, TestIdWithoutMethod) {
   
   // Prepare arguments
   std::stringstream s;
-  stan::interface_callbacks::writer::stream_writer w(s);
+  stan::callbacks::stream_writer w(s);
   
-  std::vector<stan::services::argument*> valid_arguments;
-  valid_arguments.push_back(new stan::services::arg_id());
+  std::vector<cmdstan::argument*> valid_arguments;
+  valid_arguments.push_back(new cmdstan::arg_id());
   
-  stan::services::argument_probe probe(valid_arguments);
+  cmdstan::argument_probe probe(valid_arguments);
   probe.probe_args(w);
   
   // Check argument consistency
@@ -381,14 +381,14 @@ TEST_F(StanGmArgumentsConfiguration, TestDataWithMethod) {
   
   // Prepare arguments
   std::stringstream method_output;
-  stan::interface_callbacks::writer::stream_writer method_writer(method_output);
-  stan::services::arg_method method;
+  stan::callbacks::stream_writer method_writer(method_output);
+  cmdstan::arg_method method;
   method.print(method_writer, 0, "");
   
   std::string l0;
   std::string method_argument("");
   int n_method_output = 0;
-  
+
   while (method_output.good()) {
     std::getline(method_output, l0);
     if (!method_output.good()) continue;
@@ -403,11 +403,11 @@ TEST_F(StanGmArgumentsConfiguration, TestDataWithMethod) {
   method_output.seekg(std::ios_base::beg);
   
   std::stringstream s;
-  stan::interface_callbacks::writer::stream_writer w(s);
-  std::vector<stan::services::argument*> valid_arguments;
-  valid_arguments.push_back(new stan::services::arg_data());
+  stan::callbacks::stream_writer w(s);
+  std::vector<cmdstan::argument*> valid_arguments;
+  valid_arguments.push_back(new cmdstan::arg_data());
   
-  stan::services::argument_probe probe(valid_arguments);
+  cmdstan::argument_probe probe(valid_arguments);
   probe.probe_args(w);
   
   // Check argument consistency
@@ -418,15 +418,13 @@ TEST_F(StanGmArgumentsConfiguration, TestDataWithMethod) {
   std::stringstream output;
   
   while (s.good()) {
-    
     std::getline(s, l1);
     if (!s.good()) continue;
-    
-    if      (l1 == "good") expected_success = true;
+
+    if (l1 == "good") expected_success = true;
     else if (l1 == "bad") expected_success = false;
     else if (l1 != "") expected_output << l1 << std::endl;
     else {
-      
       int n_output = 0;
       
       std::string l2;
@@ -436,6 +434,9 @@ TEST_F(StanGmArgumentsConfiguration, TestDataWithMethod) {
         std::getline(expected_output, l2);
         if (!expected_output.good()) continue;
         clean_line(l2);
+        // replace "file=good" with "file=<real file>"
+        if (l2 == "file=good")
+          l2 = "file=../src/test/test-models/test_model.init.R";
         argument += " " + l2;
         ++n_output;
       }
@@ -477,7 +478,10 @@ TEST_F(StanGmArgumentsConfiguration, TestDataWithMethod) {
         
         std::getline(output, actual_line);
         
-        EXPECT_EQ(expected_line, actual_line);
+        EXPECT_EQ(expected_line, actual_line)
+          << "expected-success = " << expected_success << std::endl
+          << "l2 = " << l2 << std::endl
+          << "l1 = " << l1 << std::endl;
       }
       
       expected_output.clear();
@@ -498,12 +502,12 @@ TEST_F(StanGmArgumentsConfiguration, TestDataWithoutMethod) {
   
   // Prepare arguments
   std::stringstream s;
-  stan::interface_callbacks::writer::stream_writer w(s);
+  stan::callbacks::stream_writer w(s);
   
-  std::vector<stan::services::argument*> valid_arguments;
-  valid_arguments.push_back(new stan::services::arg_data());
+  std::vector<cmdstan::argument*> valid_arguments;
+  valid_arguments.push_back(new cmdstan::arg_data());
   
-  stan::services::argument_probe probe(valid_arguments);
+  cmdstan::argument_probe probe(valid_arguments);
   probe.probe_args(w);
   
   // Check argument consistency
@@ -594,8 +598,8 @@ TEST_F(StanGmArgumentsConfiguration, TestInitWithMethod) {
   
   // Prepare arguments
   std::stringstream method_output;
-  stan::interface_callbacks::writer::stream_writer method_writer(method_output);
-  stan::services::arg_method method;
+  stan::callbacks::stream_writer method_writer(method_output);
+  cmdstan::arg_method method;
   method.print(method_writer, 0, "");
   
   std::string l0;
@@ -616,11 +620,11 @@ TEST_F(StanGmArgumentsConfiguration, TestInitWithMethod) {
   method_output.seekg(std::ios_base::beg);
   
   std::stringstream s;
-  stan::interface_callbacks::writer::stream_writer w(s);
-  std::vector<stan::services::argument*> valid_arguments;
-  valid_arguments.push_back(new stan::services::arg_init());
+  stan::callbacks::stream_writer w(s);
+  std::vector<cmdstan::argument*> valid_arguments;
+  valid_arguments.push_back(new cmdstan::arg_init());
   
-  stan::services::argument_probe probe(valid_arguments);
+  cmdstan::argument_probe probe(valid_arguments);
   probe.probe_args(w);
   // Check argument consistency
   bool expected_success = false;
@@ -707,12 +711,12 @@ TEST_F(StanGmArgumentsConfiguration, TestInitWithoutMethod) {
   
   // Prepare arguments
   std::stringstream s;
-  stan::interface_callbacks::writer::stream_writer w(s);
+  stan::callbacks::stream_writer w(s);
   
-  std::vector<stan::services::argument*> valid_arguments;
-  valid_arguments.push_back(new stan::services::arg_init());
+  std::vector<cmdstan::argument*> valid_arguments;
+  valid_arguments.push_back(new cmdstan::arg_init());
   
-  stan::services::argument_probe probe(valid_arguments);
+  cmdstan::argument_probe probe(valid_arguments);
   probe.probe_args(w);
   
   // Check argument consistency
@@ -800,8 +804,8 @@ TEST_F(StanGmArgumentsConfiguration, TestRandomWithMethod) {
   
   // Prepare arguments
   std::stringstream method_output;
-  stan::interface_callbacks::writer::stream_writer method_writer(method_output);
-  stan::services::arg_method method;
+  stan::callbacks::stream_writer method_writer(method_output);
+  cmdstan::arg_method method;
   method.print(method_writer, 0, "");
   
   std::string l0;
@@ -822,11 +826,11 @@ TEST_F(StanGmArgumentsConfiguration, TestRandomWithMethod) {
   method_output.seekg(std::ios_base::beg);
   
   std::stringstream s;
-  stan::interface_callbacks::writer::stream_writer w(s);
-  std::vector<stan::services::argument*> valid_arguments;
-  valid_arguments.push_back(new stan::services::arg_random());
+  stan::callbacks::stream_writer w(s);
+  std::vector<cmdstan::argument*> valid_arguments;
+  valid_arguments.push_back(new cmdstan::arg_random());
   
-  stan::services::argument_probe probe(valid_arguments);
+  cmdstan::argument_probe probe(valid_arguments);
   probe.probe_args(w);
   
   // Check argument consistency
@@ -913,12 +917,12 @@ TEST_F(StanGmArgumentsConfiguration, TestRandomWithoutMethod) {
   
   // Prepare arguments
   std::stringstream s;
-  stan::interface_callbacks::writer::stream_writer w(s);
+  stan::callbacks::stream_writer w(s);
   
-  std::vector<stan::services::argument*> valid_arguments;
-  valid_arguments.push_back(new stan::services::arg_random());
+  std::vector<cmdstan::argument*> valid_arguments;
+  valid_arguments.push_back(new cmdstan::arg_random());
   
-  stan::services::argument_probe probe(valid_arguments);
+  cmdstan::argument_probe probe(valid_arguments);
   probe.probe_args(w);
   
   // Check argument consistency
@@ -1010,8 +1014,8 @@ TEST_F(StanGmArgumentsConfiguration, TestOutputWithMethod) {
   
   // Prepare arguments
   std::stringstream method_output;
-  stan::interface_callbacks::writer::stream_writer method_writer(method_output);  
-  stan::services::arg_method method;
+  stan::callbacks::stream_writer method_writer(method_output);  
+  cmdstan::arg_method method;
   method.print(method_writer, 0, "");
   
   std::string l0;
@@ -1032,11 +1036,11 @@ TEST_F(StanGmArgumentsConfiguration, TestOutputWithMethod) {
   method_output.seekg(std::ios_base::beg);
   
   std::stringstream s;
-  stan::interface_callbacks::writer::stream_writer w(s);
-  std::vector<stan::services::argument*> valid_arguments;
-  valid_arguments.push_back(new stan::services::arg_output());
+  stan::callbacks::stream_writer w(s);
+  std::vector<cmdstan::argument*> valid_arguments;
+  valid_arguments.push_back(new cmdstan::arg_output());
   
-  stan::services::argument_probe probe(valid_arguments);
+  cmdstan::argument_probe probe(valid_arguments);
   probe.probe_args(w);
   
   // Check argument consistency
@@ -1127,12 +1131,12 @@ TEST_F(StanGmArgumentsConfiguration, TestOutputWithoutMethod) {
   
   // Prepare arguments
   std::stringstream s;
-  stan::interface_callbacks::writer::stream_writer w(s);
+  stan::callbacks::stream_writer w(s);
   
-  std::vector<stan::services::argument*> valid_arguments;
-  valid_arguments.push_back(new stan::services::arg_output());
+  std::vector<cmdstan::argument*> valid_arguments;
+  valid_arguments.push_back(new cmdstan::arg_output());
   
-  stan::services::argument_probe probe(valid_arguments);
+  cmdstan::argument_probe probe(valid_arguments);
   probe.probe_args(w);
   
   // Check argument consistency

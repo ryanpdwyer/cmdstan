@@ -15,10 +15,10 @@ Dump files can be created from R using RStan.  The function is
 \code{stan\_rdump} in package \code{rstan}.
 
 Using R's native \code{dump()} function can produce dump files which
-Stan cannot read in.  The underlying cause is that R gets creative in
-the format it uses for output, only being constrained to something
-that can be executed in R.  So it will write the array containing the
-values 1, 2, 3, 4 as \code{1:4} rather than as \code{c(1,2,3,4)}.
+Stan cannot read in.  The underlying cause is that R supports
+complicated data structures, some of which are not used in \CmdStan.
+For example, R's \code{dump()} can write a numerical vector with names
+for each element.
 
 \section{Scalar Variables}
 
@@ -74,6 +74,25 @@ the second.
 \begin{Verbatim}
 n <- 2:-2
 n <- c(2,1,0,-1,-2)
+\end{Verbatim}
+\end{quote}
+%
+
+As a special case, a sequence of zeros can also be
+represented in the dump format by \code{integer(x)} and
+\code{double(x)}, for type int and double, respectively.
+Here \code{x} is a non-negative integer to specify the
+length. If \code{x} is \code{0}, it can be ommitted. The
+following are some examples.
+%
+\begin{quote}
+\begin{Verbatim}
+x1 <- integer()
+x2 <- integer(0)
+x3 <- integer(2)
+y1 <- double()
+y2 <- double(0)
+y3 <- double(2)
 \end{Verbatim}
 \end{quote}
 %
@@ -147,6 +166,19 @@ z[2,1,4] = 20   z[2,2,4] = 22   z[2,3,4] = 24
 \end{verbatim}
 \end{quote}
 
+The sequence of values inside \code{structure} can also be
+\code{integer(x)} or \code{double(x)}. In particular, if one
+or more dimensions is zero, \code{integer()} can be put inside
+\code{structure}.  For instance, the following example is supported
+by the dump format.
+
+\begin{quote}
+\begin{verbatim}
+y <- structure(integer(), .Dim = c(2, 0))
+\end{verbatim}
+\end{quote}
+
+
 \section{Matrix- and Vector-Valued Variables}
 
 The dump format for matrices and vectors, including arrays of matrices
@@ -210,11 +242,11 @@ row_vector[N] d[P,M];
 There is no declaration in a dump file that distinguishes integer
 versus continuous values.  If a value in a dump file's definition of a
 variable contains a decimal point (e.g., \code{132.3}) or uses
-scientific notation (e.g., \code{1.323e2}), \Stan assumes that the
+scientific notation (e.g., \code{1.323e2}), Stan assumes that the
 values are real.
 
 For a single value, if there is no decimal point, it may be assigned
-to an \code{int} or \code{real} variable in \Stan.  An array value may
+to an \code{int} or \code{real} variable in Stan.  An array value may
 only be assigned to an \code{int} array if there is no decimal point
 or scientific notation in any of the values.  This convention is
 compatible with the way \R writes data.
@@ -228,7 +260,7 @@ y <-
 \end{Verbatim}
 \end{quote}
 % 
-This definition can be used for a \Stan variable \code{y} declared as
+This definition can be used for a Stan variable \code{y} declared as
 \code{real} or as \code{int}.  Assigning an integer value to a real
 variable automatically promotes the integer value to a real value.
 
@@ -253,9 +285,9 @@ y <-
 \end{quote}
 %
 Even though this is a round value, the occurrence of the decimal
-point in the value, \code{2.0}, causes \Stan to infer that \code{y} is
+point in the value, \code{2.0}, causes Stan to infer that \code{y} is
 real valued.  This dump file may only be used for variables \code{y}
-declared as real in \Stan.
+declared as real in Stan.
 
 \subsection{Scientific Notation}
 
@@ -365,10 +397,16 @@ by the following (mildly templated) Backus-Naur form grammar.
 
  value<T> ::= T 
             | seq<T>
+            | zero_array<T>
             | 'structure' '(' seq<T> ',' ".Dim" '=' seq<int> ')'
+            | 'structure' '(' zero_array<T> ',' ".Dim" '=' seq<int> ')'
 
  seq<int> ::= int ':' int
             | cseq<int>
+
+ zero_array<int> ::= "integer" '(' <non-negative int>? ')'
+
+ zero_array<real> ::= "double" '(' <non-negative int>? ')'
 
  seq<real> ::= cseq<real>
 
@@ -380,8 +418,8 @@ by the following (mildly templated) Backus-Naur form grammar.
 }
 \noindent
 The template parameters \code{T} will be set to either \code{int} or
-\code{real}.  Because \Stan allows promotion of integer values to real
+\code{real}.  Because Stan allows promotion of integer values to real
 values, an integer sequence specification in the dump data format may
-be assigned to either an integer- or real-based variable in \Stan.
+be assigned to either an integer- or real-based variable in Stan.
 
 

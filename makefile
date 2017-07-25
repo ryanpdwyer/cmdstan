@@ -35,9 +35,11 @@ CFLAGS = -I src -I $(STAN)src -isystem $(MATH) -isystem $(EIGEN) -isystem $(BOOS
 CFLAGS_GTEST = -DGTEST_USE_OWN_TR1_TUPLE
 LDLIBS = 
 LDLIBS_STANC = -Lbin -lstanc
+STANCFLAGS ?=
+USER_HEADER ?= $(dir $<)user_header.hpp
 EXE = 
 PATH_SEPARATOR = /
-CMDSTAN_VERSION := 2.10.0
+CMDSTAN_VERSION := 2.16.0
 
 ##
 # Get information about the compiler used.
@@ -66,12 +68,13 @@ CMDSTAN_VERSION := 2.10.0
 # Tell make the default way to compile a .o file.
 ##
 %.o : %.cpp
-	$(COMPILE.c) -O$O $(OUTPUT_OPTION) $<
+	$(COMPILE.c) -O$O -include $(dir $<)USER_HEADER.hpp  $(OUTPUT_OPTION) $<
 
 %$(EXE) : %.hpp %.stan 
 	@echo ''
 	@echo '--- Linking C++ model ---'
-	$(LINK.c) -O$O $(OUTPUT_OPTION) $(CMDSTAN_MAIN) -include $< $(LIBCVODES) $(LDLIBS)
+	@test -f $(dir $<)USER_HEADER.hpp || touch $(dir $<)USER_HEADER.hpp
+	$(LINK.c) -O$O $(OUTPUT_OPTION) $(CMDSTAN_MAIN) -include $< -include $(dir $<)USER_HEADER.hpp $(LIBCVODES) $(LDLIBS)
 
 
 ##
@@ -126,6 +129,7 @@ help:
 	@echo '    1. Build the Stan compiler bin/stanc$(EXE).'
 	@echo '    2. Build the print utility bin/print$(EXE) (deprecated; will be removed in v3.0)'
 	@echo '    3. Build the stansummary utility bin/stansummary$(EXE)'
+	@echo '    4. Build the diagnose utility bin/diagnose$(EXE)'
 	@echo ''
 	@echo '    Note: to build using multiple cores, use the -j option to make. '
 	@echo '    For 4 cores:'
@@ -141,6 +145,15 @@ help:
 	@echo '    1. Build the Stan compiler and the print utility if not built.'
 	@echo '    2. Use the Stan compiler to generate C++ code, foo/bar.hpp.'
 	@echo '    3. Compile the C++ code using $(CC) $(CC_MAJOR).$(CC_MINOR) to generate foo/bar$(EXE)'
+	@echo ''
+	@echo '  Additional make options:'
+	@echo '    STANCFLAGS: defaults to "". These are extra options passed to bin/stanc$(EXE)'
+	@echo '      when generating C++ code. If you want to allow undefined functions in the'
+	@echo '      Stan program, either add this to make/local or the command line:'
+	@echo '          STANCFLAGS = --allow_undefined'
+	@echo '    USER_HEADER: when STANCFLAGS has --allow_undefined, this is the name of the'
+	@echo '      header file that is included. This defaults to "user_header.hpp" in the'
+	@echo '      directory of the Stan program.'
 	@echo ''
 	@echo ''
 	@echo '  Example - bernoulli model: examples/bernoulli/bernoulli.stan'
@@ -196,6 +209,7 @@ endif
 	@echo '- bin/stanc$(EXE): Build the Stan compiler.'
 	@echo '- bin/print$(EXE): Build the print utility. (deprecated)'
 	@echo '- bin/stansummary(EXE): Build the print utility.'
+	@echo '- bin/diagnostic(EXE): Build the diagnostic utility.'
 	@echo '- bin/libstanc.a : Build the Stan compiler static library (used in linking'
 	@echo '                   bin/stanc$(EXE))'
 	@echo '- *$(EXE)        : If a Stan model exists at *.stan, this target will build'
@@ -210,11 +224,11 @@ endif
 -include make/libstan  # libstan.a
 -include make/models   # models
 -include make/tests
--include make/command  # bin/stanc, bin/stansummary, bin/print
+-include make/command  # bin/stanc, bin/stansummary, bin/print, bin/diagnose
 -include $(STAN)make/manual
 
 .PHONY: build
-build: bin/stanc$(EXE) bin/stansummary$(EXE) bin/print$(EXE) $(LIBCVODES)
+build: bin/stanc$(EXE) bin/stansummary$(EXE) bin/print$(EXE) bin/diagnose$(EXE) $(LIBCVODES)
 	@echo ''
 	@echo '--- CmdStan v$(CMDSTAN_VERSION) built ---'
 
@@ -231,8 +245,7 @@ clean: clean-manual
 clean-manual:
 	cd src/docs/cmdstan-guide; $(RM) *.brf *.aux *.bbl *.blg *.log *.toc *.pdf *.out *.idx *.ilg *.ind *.cb *.cb2 *.upa
 
-
-clean-all: clean
+clean-all: clean clean-libraries
 	$(RM) -r bin
 
 ##
